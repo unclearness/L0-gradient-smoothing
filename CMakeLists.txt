@@ -1,57 +1,54 @@
 project(L0-gradient-minimization)
-cmake_minimum_required(VERSION 2.8)
-aux_source_directory(. SRC_LIST)
-add_executable(${PROJECT_NAME} ${SRC_LIST})
+cmake_minimum_required(VERSION 3.14)
 
-######################
-# Compiler flags
-######################
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O2 -Wall -Wextra -pedantic")
+# .dll and .exe
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/bin) 
+
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_STANDARD 17)
+
+if (WIN32)
+# option for Visual Studio
+# -EHsc (enable proper Exxeption Handling) needs to avoid C4530
+# -Wall is too noisy so that set -W4. 
+# https://docs.microsoft.com/en-us/cpp/build/reference/compiler-option-warning-level?view=vs-2017
+# "However, for a new project, it may be best to use /W4 in all compilations;
+# this will ensure the fewest possible hard-to-find code defects."
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /W4 /EHsc /MP /bigobj")
+else()
+# g++/clang option for *nix
+set(CMAKE_CXX_EXTENSIONS OFF) #Set this to ON if you want to use GNU++
+set(CMAKE_CXX_FLAGS  "${CMAKE_CXX_FLAGS} -Wall -O2")
+endif()
+
 
 ##########
 #Eigen
 ##########
-#set(EIGEN_DIR /usr/local/include/eigen3/)
-#include_directories(${EIGEN_DIR})
-list(APPEND CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake)
-find_package(Eigen REQUIRED)
-include_directories(${EIGEN_INCLUDE_DIRS})
-
-######################
-# boost
-######################
-if(${CMAKE_SYSTEM_NAME} MATCHES "Linux")
-set(Boost_INCLUDE_DIR /usr/include)
-set(Boost_LIBRARY_DIR /usr/lib)
-set(BOOST_LIBRARYDIR /usr/lib)
-link_directories(/usr/lib)
-get_directory_property(OUT_VAR LINK_DIRECTORIES)
-message(STATUS "LINK DIR: ${OUT_VAR}")
+if(NOT DEFINED EIGEN3_INCLUDE_DIR)
+  set(EIGEN3_INCLUDE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/third_party/eigen" CACHE PATH "eigen installed directory" FORCE)
 endif()
+message("EIGEN3_INCLUDE_DIR: ${EIGEN3_INCLUDE_DIR}") 
+include_directories(${EIGEN3_INCLUDE_DIR})
 
-FIND_PACKAGE(Boost COMPONENTS filesystem program_options system REQUIRED)
-if (Boost_FOUND)
-  message(STATUS "Found 'boost library'")
-  include_directories(${Boost_INCLUDE_DIR})
-  link_directories(${Boost_LIBRARY_DIRS})
-  message(STATUS " boost lib dir:${Boost_LIBRARY_DIRS}")
-  message(STATUS " boost include dir:${Boost_INCLUDE_DIR}")
-  message(STATUS " libs: ${Boost_LIBRARIES}" )
-  target_link_libraries(${PROJECT_NAME} ${Boost_LIBRARIES})
-else()
-  message(FATAL_ERROR "Couldn't find Boost library.")
+##########
+#cxxopts
+##########
+if(NOT DEFINED CXXOPTS_INSTALL_DIR)
+  set(CXXOPTS_INSTALL_DIR "${CMAKE_CURRENT_SOURCE_DIR}/third_party/cxxopts" CACHE PATH "cxxopts installed directory" FORCE)
 endif()
+message("CXXOPTS_INSTALL_DIR: ${CXXOPTS_INSTALL_DIR}") 
+include_directories(${CXXOPTS_INSTALL_DIR}/include)
 
 ##########################
 # opencv
 ##########################
-set(OpenCV_DIR "/usr/local/opencv/share/OpenCV/OpenCVConfig.cmake"
-    CACHE PATH "The path where OpenCVConfig.cmake is placed")
 find_package(OpenCV REQUIRED)
-
 if(OpenCV_FOUND)
   message(STATUS "Found 'opencv library' ${OpenCV_VERSION}")
-  target_link_libraries(${PROJECT_NAME} ${OpenCV_LIBS})
 else()
   message(SEND_ERROR "Couldn't find OpenCV")
 endif()
+
+add_executable(${PROJECT_NAME} L0minimization.cpp)
+target_link_libraries(${PROJECT_NAME} ${OpenCV_LIBS})
